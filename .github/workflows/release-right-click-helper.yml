@@ -1,0 +1,113 @@
+name: Release right click helper
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-darwin-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Build arm64 app bundle
+        run: ./build-darwin-arm64-app.sh --dev
+        working-directory: rightClickHelper
+
+      - name: Archive arm64 app bundle
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            "rightClickHelper/dist/darwin_arm64/smartUp.app" \
+            "smartup-darwin-arm64.zip"
+
+      - name: Upload arm64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartup-darwin-arm64
+          path: smartup-darwin-arm64.zip
+
+  build-darwin-amd64:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Build amd64 app bundle
+        run: SMARTUP_HELPER_ARCH=amd64 SMARTUP_HELPER_RUST_TARGET=x86_64-apple-darwin ./build-darwin-arm64-app.sh --dev
+        working-directory: rightClickHelper
+
+      - name: Archive amd64 app bundle
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            "rightClickHelper/dist/darwin_amd64/smartUp.app" \
+            "smartup-darwin-amd64.zip"
+
+      - name: Upload amd64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartup-darwin-amd64
+          path: smartup-darwin-amd64.zip
+
+  build-linux-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Build linux amd64 binary
+        run: cargo build --manifest-path rightClickHelper/Cargo.toml --release --target x86_64-unknown-linux-gnu
+
+      - name: Archive linux amd64 binary
+        run: |
+          mkdir -p release/linux-amd64
+          cp "rightClickHelper/target/x86_64-unknown-linux-gnu/release/smartup-right-click-helper" \
+            "release/linux-amd64/smartup-right-click-helper"
+          chmod +x "release/linux-amd64/smartup-right-click-helper"
+          cd release/linux-amd64
+          zip -q -r "$GITHUB_WORKSPACE/smartup-linux-amd64.zip" "smartup-right-click-helper"
+
+      - name: Upload linux amd64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartup-linux-amd64
+          path: smartup-linux-amd64.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - build-darwin-arm64
+      - build-darwin-amd64
+      - build-linux-amd64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/smartup-darwin-arm64.zip
+            release-assets/smartup-darwin-amd64.zip
+            release-assets/smartup-linux-amd64.zip
