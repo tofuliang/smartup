@@ -33,6 +33,7 @@
 		"default_title": "smartUp",
 		"default_popup": "html/popup.html"
 	},
+	"update_url": "https://raw.githubusercontent.com/tofuliang/smartup/master/dist/update.xml",
 	"options_ui": {
 		"open_in_tab": true,
 		"page": "html/options.html"

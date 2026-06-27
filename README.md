@@ -49,6 +49,59 @@ smartUP Gestures has ben uploaded to these browser's extension store, you'll ins
 # Linux runtime requires X11 + xdotool
 ```
 
+### Build extension artifacts with GitHub Actions
+
+The repository now includes a manual GitHub Actions workflow at `.github/workflows/build-extension.yml`.
+
+It builds and commits these files back into `dist/`:
+
+- `dist/smartup.zip`
+- `dist/smartup.crx`
+- `dist/update.xml`
+
+Before running it, configure the repository secret:
+
+- `CRX_PRIVATE_KEY` — PEM private key used to pack the extension into a stable `.crx`
+
+The workflow is triggered manually through **Actions → Build extension → Run workflow**.
+
+`update.xml` follows the Chrome self-hosted update format and points to:
+
+- `https://raw.githubusercontent.com/tofuliang/smartup/master/dist/smartup.crx`
+- `https://raw.githubusercontent.com/tofuliang/smartup/master/dist/update.xml`
+
+### Debug native helper
+
+The Rust native helper supports runtime debug logging via the `SMARTUP_HELPER_DEBUG` environment variable.
+
+On macOS, the simplest way is to export the variable first, then launch the browser from the same terminal:
+
+```shell
+export SMARTUP_HELPER_DEBUG=1
+/Applications/Brave\ Browser.app/Contents/MacOS/Brave\ Browser
+```
+
+If you want to keep the native helper debug logs in a file:
+
+```shell
+export SMARTUP_HELPER_DEBUG=1
+/Applications/Brave\ Browser.app/Contents/MacOS/Brave\ Browser 2>>/tmp/smartup-rightclickhelper.log
+```
+
+Then inspect the log with:
+
+```shell
+tail -f /tmp/smartup-rightclickhelper.log
+```
+
+Useful debug lines include:
+
+- `startup version:` — the host actually launched
+- `received request ... payload=...` — the browser sent a native message
+- `macos accessibility granted=true|false` — Accessibility permission state
+- `macos right_click ... double_click=true|false` — whether the helper interpreted the click as single or double
+- `result=ok|error` — whether the OS backend accepted the action
+
 ## License
 
 [![License](https://img.shields.io/github/license/zimocode/smartup?logo=github&logoColor=white)](LICENSE)

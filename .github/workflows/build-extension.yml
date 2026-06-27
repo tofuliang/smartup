@@ -1,0 +1,78 @@
+name: Build extension
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-extension:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate extension source tree
+        run: |
+          test -f manifest.json
+          test -d html
+          test -d js
+          test -d css
+
+      - name: Prepare build directories
+        run: |
+          DIST=build/chrome
+          rm -rf "$DIST"
+          mkdir -p "$DIST"
+          mkdir -p dist
+          rm -f dist/smartup.zip dist/smartup.crx
+          cp manifest.json "$DIST/manifest.json"
+          cp -r html "$DIST/html"
+          cp -r js "$DIST/js"
+          cp -r css "$DIST/css"
+          cp -r _locales "$DIST/_locales"
+          cp -r image "$DIST/image"
+          cp icon.png "$DIST/icon.png"
+
+      - name: Build extension zip
+        run: |
+          DIST=build/chrome
+          (cd "$DIST" && zip -qr "$GITHUB_WORKSPACE/dist/smartup.zip" manifest.json html js css _locales image icon.png)
+
+      - name: Write CRX private key
+        env:
+          CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
+        run: |
+          test -n "$CRX_PRIVATE_KEY"
+          printf '%s' "$CRX_PRIVATE_KEY" > /tmp/smartup-extension.pem
+
+      - name: Build CRX and update.xml
+        run: |
+          DIST=build/chrome
+          npm install crx3
+          npx crx3 \
+            -p /tmp/smartup-extension.pem \
+            -o dist/smartup.crx \
+            -x dist/update.xml \
+            --crxURL https://raw.githubusercontent.com/tofuliang/smartup/master/dist/smartup.crx \
+            "$DIST"
+
+      - name: Commit build artifacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/smartup.zip dist/smartup.crx dist/update.xml
+          if git diff --cached --quiet; then
+            echo "No artifact changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: update extension build artifacts [skip ci]"
+          git push

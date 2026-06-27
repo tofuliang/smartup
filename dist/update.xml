@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <app appid="hmnleooedcglhpgnfbnigbemebbmmocp">
+    <updatecheck
+      codebase="https://raw.githubusercontent.com/tofuliang/smartup/master/dist/smartup.crx"
+      version="7.2.622.1170"
+      prodversionmin="114" />
+  </app>
+</gupdate>
